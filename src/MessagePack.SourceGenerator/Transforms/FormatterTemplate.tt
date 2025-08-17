@@ -66,7 +66,7 @@ using MsgPack = global::MessagePack;
 
 <# if (Info.MaxKey == -1 && !Info.HasIMessagePackSerializationCallbackReceiver) { #>
 			reader.Skip();
-			return new <#= Info.GetConstructorString()  #>;
+			return <#= Info.GetConstructorString()  #>;
 <# } else { #>
 			options.Security.DepthStep(ref reader);
 <# if (isFormatterResolverNecessary) { #>
@@ -78,7 +78,7 @@ using MsgPack = global::MessagePack;
 			var <#= member.LocalVariableName #> = default(<#= member.Type #>);
 <#	}
 } else { #>
-			var ____result = new <#= Info.GetConstructorString()  #>;
+			var ____result = <#= Info.GetConstructorString()  #>;
 <# } #>
 
 			for (int i = 0; i < length; i++)
@@ -107,7 +107,7 @@ using MsgPack = global::MessagePack;
 			}
 
 <# if (Info.MustDeserializeFieldsFirst) { #>
-			var ____result = new <#= Info.GetConstructorString() #>;
+			var ____result = <#= Info.GetConstructorString() #>;
 <# bool memberAssignExists = false;
   for (var memberIndex = 0; memberIndex <= Info.MaxKey; memberIndex++) {
   var member = Info.GetMember(memberIndex);

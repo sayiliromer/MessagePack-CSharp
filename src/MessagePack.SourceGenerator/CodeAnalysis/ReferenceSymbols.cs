@@ -16,7 +16,8 @@ public record ReferenceSymbols(
     INamedTypeSymbol? MessagePackFormatter,
     INamedTypeSymbol? MessagePackFormatterOfT,
     INamedTypeSymbol? IgnoreDataMemberAttribute,
-    INamedTypeSymbol IMessagePackSerializationCallbackReceiver)
+    INamedTypeSymbol IMessagePackSerializationCallbackReceiver,
+    INamedTypeSymbol MessagePackIgnoreMembers)
 {
     public static bool TryCreate(Compilation compilation, [NotNullWhen(true)] out ReferenceSymbols? instance)
     {
@@ -58,6 +59,12 @@ public record ReferenceSymbols(
             return false;
         }
 
+        INamedTypeSymbol? ignoreMembers = compilation.GetTypeByMetadataName("MessagePack.MessagepackIgnoreMembersAttribute");
+        if (ignoreMembers is null)
+        {
+            return false;
+        }
+
         INamedTypeSymbol? messageFormatter = compilation.GetTypeByMetadataName("MessagePack.Formatters.IMessagePackFormatter");
         INamedTypeSymbol? messageFormatterOfT = compilation.GetTypeByMetadataName("MessagePack.Formatters.IMessagePackFormatter`1")?.ConstructUnboundGenericType();
 
@@ -79,7 +86,8 @@ public record ReferenceSymbols(
             messageFormatter,
             messageFormatterOfT,
             ignoreDataMemberAttribute,
-            messagePackSerializationCallbackReceiver);
+            messagePackSerializationCallbackReceiver,
+            ignoreMembers);
         return true;
     }
 }

@@ -116,7 +116,7 @@ namespace MessagePack
         }
     }
 
-    [AttributeUsage(AttributeTargets.Constructor, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Constructor | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public class SerializationConstructorAttribute : Attribute
     {
     }
@@ -138,5 +138,10 @@ namespace MessagePack
             this.FormatterType = formatterType ?? throw new ArgumentNullException(nameof(formatterType));
             this.Arguments = arguments;
         }
+    }
+
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+    public class MessagepackIgnoreMembersAttribute : Attribute
+    {
     }
 }

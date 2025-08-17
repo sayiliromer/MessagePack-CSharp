@@ -772,9 +772,46 @@ public class TypeCollector
             return null;
         }
 
+
+        bool HasIgnoreMembersAttribute(INamedTypeSymbol? typeSymbol)
+        {
+            if (typeSymbol == null)
+            {
+                return false;
+            }
+
+            return typeSymbol.GetAttributes()
+                .Any(a => a.AttributeClass.ApproximatelyEqual(this.typeReferences.MessagePackIgnoreMembers));
+        }
+
+        List<INamedTypeSymbol> GetIgnoreChain(INamedTypeSymbol type)
+        {
+            var chain = new List<INamedTypeSymbol>();
+            var current = type;
+            var hasIgnore = false;
+            while (current != null)
+            {
+                if (hasIgnore)
+                {
+                    chain.Add(current);
+                }
+
+                current = current.BaseType;
+                if (HasIgnoreMembersAttribute(current))
+                {
+                    hasIgnore = true;
+                }
+            }
+
+            return chain;
+        }
+
+        List<INamedTypeSymbol> chain = GetIgnoreChain(formattedType);
+
+
         HashSet<Diagnostic> reportedDiagnostics = new();
         IEnumerable<ISymbol> instanceMembers = formattedType.GetAllMembers()
-            .Where(m => m is IFieldSymbol or IPropertySymbol && !(m.IsStatic || m.IsOverride || m.IsImplicitlyDeclared));
+            .Where(m => m is IFieldSymbol or IPropertySymbol && !(m.IsStatic || m.IsOverride || m.IsImplicitlyDeclared) && !chain.Contains(m.ContainingType));
 
         // The actual member identifiers of each serializable member,
         // such that we'll recognize collisions as we enumerate members in base types
@@ -1229,11 +1266,42 @@ public class TypeCollector
             }
         }
 
+        IMethodSymbol? FindStaticSerializationConstructor(INamedTypeSymbol type)
+        {
+            var current = type;
+
+            while (current != null)
+            {
+                var staticConstructor = current.GetMembers()
+                    .OfType<IMethodSymbol>()
+                    .Where(m => m.MethodKind == MethodKind.Ordinary && m.IsStatic)
+                    .SingleOrDefault(m =>
+                        m.GetAttributes()
+                         .Any(a => a.AttributeClass != null && a.AttributeClass.ApproximatelyEqual(this.typeReferences.SerializationConstructorAttribute))
+                    );
+
+                if (staticConstructor != null)
+                    return staticConstructor;
+
+                current = current.BaseType; // move up the inheritance chain
+            }
+
+            return null;
+        }
+
+        //Static function as costructor
+        var staticConstructor = FindStaticSerializationConstructor(formattedType);
+
         // struct allows null ctor
         if (ctor is null && isClass)
         {
             this.reportDiagnostic?.Invoke(Diagnostic.Create(MsgPack00xMessagePackAnalyzer.NoDeserializingConstructor, GetIdentifierLocation(formattedType)));
             return null;
+        }
+
+        if (staticConstructor is not null)
+        {
+            ctor = staticConstructor;
         }
 
         var constructorParameters = new List<MemberSerializationInfo>();
@@ -1349,6 +1417,115 @@ public class TypeCollector
             }
         }
 
+        //if (staticConstructor is not null)
+        //{
+        //    nestedFormatterRequired |= IsPartialTypeRequired(staticConstructor.DeclaredAccessibility);
+
+        //    var constructorLookupDictionary = stringMembers.ToLookup(x => x.Value.Info.Name, x => x, StringComparer.OrdinalIgnoreCase);
+        //    IReadOnlyDictionary<int, (MemberSerializationInfo Info, ITypeSymbol TypeSymbol)> ctorParamIndexIntMembersDictionary = intMembers
+        //        .OrderBy(x => x.Key).Select((x, i) => (Key: x.Value, Index: i))
+        //        .ToDictionary(x => x.Index, x => x.Key);
+
+        //    constructorParameters.Clear();
+        //    var ctorParamIndex = 0;
+        //    foreach (IParameterSymbol item in staticConstructor!.Parameters)
+        //    {
+        //        if (isIntKey)
+        //        {
+        //            if (ctorParamIndexIntMembersDictionary.TryGetValue(ctorParamIndex, out (MemberSerializationInfo Info, ITypeSymbol TypeSymbol) member))
+        //            {
+        //                if (this.compilation.ClassifyConversion(member.TypeSymbol, item.Type) is { IsImplicit: true } && member.Info.IsReadable)
+        //                {
+        //                    constructorParameters.Add(member.Info);
+        //                }
+        //                else
+        //                {
+        //                    if (ctorEnumerator != null)
+        //                    {
+        //                        ctor = null;
+        //                        continue;
+        //                    }
+        //                    else
+        //                    {
+        //                        this.reportDiagnostic?.Invoke(Diagnostic.Create(MsgPack00xMessagePackAnalyzer.DeserializingConstructorParameterTypeMismatch, GetLocation(item)));
+        //                        return null;
+        //                    }
+        //                }
+        //            }
+        //            else
+        //            {
+        //                if (ctorEnumerator != null)
+        //                {
+        //                    staticConstructor = null;
+        //                    continue;
+        //                }
+        //                else
+        //                {
+        //                    this.reportDiagnostic?.Invoke(Diagnostic.Create(MsgPack00xMessagePackAnalyzer.DeserializingConstructorParameterIndexMissing, GetParameterListLocation(staticConstructor)));
+        //                    return null;
+        //                }
+        //            }
+        //        }
+        //        else
+        //        {
+        //            IEnumerable<KeyValuePair<string, (MemberSerializationInfo Info, ITypeSymbol TypeSymbol)>> hasKey = constructorLookupDictionary[item.Name];
+        //            using var enumerator = hasKey.GetEnumerator();
+
+        //            // hasKey.Count() == 0
+        //            if (!enumerator.MoveNext())
+        //            {
+        //                if (ctorEnumerator == null)
+        //                {
+        //                    this.reportDiagnostic?.Invoke(Diagnostic.Create(MsgPack00xMessagePackAnalyzer.DeserializingConstructorParameterNameMissing, GetParameterListLocation(staticConstructor)));
+        //                    return null;
+        //                }
+
+        //                staticConstructor = null;
+        //                continue;
+        //            }
+
+        //            var first = enumerator.Current.Value;
+
+        //            // hasKey.Count() != 1
+        //            if (enumerator.MoveNext())
+        //            {
+        //                if (ctorEnumerator == null)
+        //                {
+        //                    this.reportDiagnostic?.Invoke(Diagnostic.Create(MsgPack00xMessagePackAnalyzer.DeserializingConstructorParameterNameDuplicate, GetLocation(item)));
+        //                    return null;
+        //                }
+
+        //                ctor = null;
+        //                continue;
+        //            }
+
+        //            MemberSerializationInfo paramMember = first.Info;
+        //            if (item.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == paramMember.Type && paramMember.IsReadable)
+        //            {
+        //                constructorParameters.Add(paramMember);
+        //            }
+        //            else
+        //            {
+        //                if (ctorEnumerator == null)
+        //                {
+        //                    this.reportDiagnostic?.Invoke(Diagnostic.Create(MsgPack00xMessagePackAnalyzer.DeserializingConstructorParameterTypeMismatch, GetLocation(item)));
+        //                    return null;
+        //                }
+
+        //                ctor = null;
+        //                continue;
+        //            }
+        //        }
+
+        //        ctorParamIndex++;
+        //    }
+
+        //    if (staticConstructor == null)
+        //    {
+        //        this.reportDiagnostic?.Invoke(Diagnostic.Create(MsgPack00xMessagePackAnalyzer.NoDeserializingConstructor, GetIdentifierLocation(formattedType)));
+        //    }
+        //}
+
         var hasSerializationConstructor = formattedType.AllInterfaces.Any(x => x.ApproximatelyEqual(this.typeReferences.IMessagePackSerializationCallbackReceiver));
         var needsCastOnBefore = true;
         var needsCastOnAfter = true;
@@ -1429,7 +1606,8 @@ public class TypeCollector
             hasIMessagePackSerializationCallbackReceiver: hasSerializationConstructor,
             needsCastOnAfter: needsCastOnAfter,
             needsCastOnBefore: needsCastOnBefore,
-            this.options.Generator.Resolver);
+            this.options.Generator.Resolver,
+            staticConstructor);
 
         return info;
     }

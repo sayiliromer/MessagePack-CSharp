@@ -33,6 +33,8 @@ public record ObjectSerializationInfo : ResolverRegisterInfo
 
     public bool IsStringKey => !this.IsIntKey;
 
+    public IMethodSymbol StaticFunctionAsConstructor { get; init; }
+
     public int WriteCount
     {
         get
@@ -67,7 +69,8 @@ public record ObjectSerializationInfo : ResolverRegisterInfo
         bool hasIMessagePackSerializationCallbackReceiver,
         bool needsCastOnAfter,
         bool needsCastOnBefore,
-        ResolverOptions resolverOptions)
+        ResolverOptions resolverOptions,
+        IMethodSymbol staticFunctionAsConstructor)
     {
         ResolverRegisterInfo basicInfo = ResolverRegisterInfo.Create(
             dataType,
@@ -86,6 +89,7 @@ public record ObjectSerializationInfo : ResolverRegisterInfo
             HasIMessagePackSerializationCallbackReceiver = hasIMessagePackSerializationCallbackReceiver,
             NeedsCastOnAfter = needsCastOnAfter,
             NeedsCastOnBefore = needsCastOnBefore,
+            StaticFunctionAsConstructor = staticFunctionAsConstructor,
         };
     }
 
@@ -97,7 +101,21 @@ public record ObjectSerializationInfo : ResolverRegisterInfo
     public string GetConstructorString()
     {
         StringBuilder builder = new();
-        builder.Append(this.DataType.GetQualifiedName(Qualifiers.GlobalNamespace, GenericParameterStyle.Identifiers));
+        if (StaticFunctionAsConstructor != null)
+        {
+            var name = this.DataType.GetQualifiedName(Qualifiers.GlobalNamespace, GenericParameterStyle.Identifiers);
+            builder.Append(name);
+            builder.Append(".");
+            builder.Append(StaticFunctionAsConstructor.Name);
+            builder.Append("<");
+            builder.Append(name);
+            builder.Append(">");
+        }
+        else
+        {
+            builder.Append("new ");
+            builder.Append(this.DataType.GetQualifiedName(Qualifiers.GlobalNamespace, GenericParameterStyle.Identifiers));
+        }
 
         builder.Append('(');
 

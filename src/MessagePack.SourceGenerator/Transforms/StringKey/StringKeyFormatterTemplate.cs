@@ -109,7 +109,7 @@ namespace MessagePack.SourceGenerator.Transforms
  } 
             this.Write("\t\t\t}\r\n\r\n");
  if (Info.Members.Length == 0) { 
-            this.Write("\t\t\treader.Skip();\r\n\t\t\tvar ____result = new ");
+            this.Write("\t\t\treader.Skip();\r\n\t\t\tvar ____result = ");
             this.Write(this.ToStringHelper.ToStringWithCulture(Info.GetConstructorString()));
             this.Write(";\r\n");
  } else { 
@@ -134,7 +134,7 @@ namespace MessagePack.SourceGenerator.Transforms
             this.Write(");\r\n");
 	} 
  } else { 
-            this.Write("\t\t\tvar ____result = new ");
+            this.Write("\t\t\tvar ____result = ");
             this.Write(this.ToStringHelper.ToStringWithCulture(Info.GetConstructorString()));
             this.Write(";\r\n");
  } 
@@ -145,7 +145,7 @@ namespace MessagePack.SourceGenerator.Transforms
             this.Write(this.ToStringHelper.ToStringWithCulture(StringKeyFormatterDeserializeHelper.Classify(Info, "					", !Info.MustDeserializeFieldsFirst)));
             this.Write("\r\n\t\t\t\t}\r\n\t\t\t}\r\n\r\n");
  if (Info.MustDeserializeFieldsFirst) { 
-            this.Write("\t\t\tvar ____result = new ");
+            this.Write("\t\t\tvar ____result = ");
             this.Write(this.ToStringHelper.ToStringWithCulture(Info.GetConstructorString()));
             this.Write(";\r\n");
  foreach (var member in Info.Members.Where(x => x.IsWritable && !x.IsInitOnly && !x.IsRequired && !Info.ConstructorParameters.Any(p => p.Equals(x)))) { 

@@ -92,7 +92,7 @@ namespace MessagePack.SourceGenerator.Transforms
  } 
             this.Write("\t\t\t}\r\n\r\n");
  if (Info.MaxKey == -1 && !Info.HasIMessagePackSerializationCallbackReceiver) { 
-            this.Write("\t\t\treader.Skip();\r\n\t\t\treturn new ");
+            this.Write("\t\t\treader.Skip();\r\n\t\t\treturn ");
             this.Write(this.ToStringHelper.ToStringWithCulture(Info.GetConstructorString()));
             this.Write(";\r\n");
  } else { 
@@ -110,7 +110,7 @@ namespace MessagePack.SourceGenerator.Transforms
             this.Write(");\r\n");
 	}
 } else { 
-            this.Write("\t\t\tvar ____result = new ");
+            this.Write("\t\t\tvar ____result = ");
             this.Write(this.ToStringHelper.ToStringWithCulture(Info.GetConstructorString()));
             this.Write(";\r\n");
  } 
@@ -142,7 +142,7 @@ namespace MessagePack.SourceGenerator.Transforms
  } 
             this.Write("\t\t\t\t\tdefault:\r\n\t\t\t\t\t\treader.Skip();\r\n\t\t\t\t\t\tbreak;\r\n\t\t\t\t}\r\n\t\t\t}\r\n\r\n");
  if (Info.MustDeserializeFieldsFirst) { 
-            this.Write("\t\t\tvar ____result = new ");
+            this.Write("\t\t\tvar ____result = ");
             this.Write(this.ToStringHelper.ToStringWithCulture(Info.GetConstructorString()));
             this.Write(";\r\n");
  bool memberAssignExists = false;
